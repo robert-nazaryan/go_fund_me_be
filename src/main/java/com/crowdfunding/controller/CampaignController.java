@@ -3,12 +3,12 @@ package com.crowdfunding.controller;
 import com.crowdfunding.dto.*;
 import com.crowdfunding.entity.Campaign;
 import com.crowdfunding.service.CampaignService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,28 +16,42 @@ import java.util.List;
 @RequestMapping("/api/campaigns")
 @RequiredArgsConstructor
 public class CampaignController {
-    
+
     private final CampaignService campaignService;
-    
-    @PostMapping
+
+    @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<CampaignDto> createCampaign(
-            @Valid @RequestBody CampaignCreateRequest request,
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("goalAmount") Double goalAmount,
+            @RequestParam("category") Campaign.CampaignCategory category,
+            @RequestParam(value = "deadline", required = false) String deadline,
+            @RequestParam("coverImage") MultipartFile coverImage,
+            @RequestParam(value = "galleryImages", required = false) MultipartFile[] galleryImages,
             Authentication authentication) {
+
         String userEmail = authentication.getName();
+
+        CampaignCreateRequest request = new CampaignCreateRequest();
+        request.setTitle(title);
+        request.setDescription(description);
+        request.setGoalAmount(goalAmount);
+        request.setCategory(category);
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(campaignService.createCampaign(request, userEmail));
+                .body(campaignService.createCampaign(request, coverImage, galleryImages, userEmail));
     }
-    
+
     @GetMapping
     public ResponseEntity<List<CampaignDto>> getAllCampaigns() {
         return ResponseEntity.ok(campaignService.getAllCampaigns());
     }
-    
+
     @GetMapping("/{id}")
     public ResponseEntity<CampaignDto> getCampaignById(@PathVariable Long id) {
         return ResponseEntity.ok(campaignService.getCampaignById(id));
     }
-    
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<CampaignDto>> getCampaignsByStatus(
             @PathVariable Campaign.CampaignStatus status) {
@@ -55,16 +69,7 @@ public class CampaignController {
         String userEmail = authentication.getName();
         return ResponseEntity.ok(campaignService.getUserCampaigns(userEmail));
     }
-    
-    @PutMapping("/{id}")
-    public ResponseEntity<CampaignDto> updateCampaign(
-            @PathVariable Long id,
-            @Valid @RequestBody CampaignUpdateRequest request,
-            Authentication authentication) {
-        String userEmail = authentication.getName();
-        return ResponseEntity.ok(campaignService.updateCampaign(id, request, userEmail));
-    }
-    
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCampaign(
             @PathVariable Long id,

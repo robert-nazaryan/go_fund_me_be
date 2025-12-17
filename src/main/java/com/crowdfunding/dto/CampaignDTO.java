@@ -18,6 +18,7 @@ public class CampaignDto {
     private Double currentAmount;
     private String coverImage;
     private String[] galleryImages;
+    private String documentUrl;
     private Campaign.CampaignCategory category;
     private Campaign.CampaignStatus status;
     private LocalDateTime deadline;

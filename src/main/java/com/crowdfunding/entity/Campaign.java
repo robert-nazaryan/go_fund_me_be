@@ -40,6 +40,9 @@ public class Campaign {
     @Column(name = "gallery_images", columnDefinition = "TEXT[]")
     private String[] galleryImages;
 
+    @Column(name = "document_url")
+    private String documentUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CampaignCategory category;

@@ -28,6 +28,7 @@ public class CampaignController {
             @RequestParam(value = "deadline", required = false) String deadline,
             @RequestParam("coverImage") MultipartFile coverImage,
             @RequestParam(value = "galleryImages", required = false) MultipartFile[] galleryImages,
+            @RequestParam(value = "document", required = false) MultipartFile document,
             Authentication authentication) {
 
         String userEmail = authentication.getName();
@@ -39,7 +40,33 @@ public class CampaignController {
         request.setCategory(category);
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(campaignService.createCampaign(request, coverImage, galleryImages, userEmail));
+                .body(campaignService.createCampaign(request, coverImage, galleryImages, document, userEmail));
+    }
+
+    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
+    public ResponseEntity<CampaignDto> updateCampaign(
+            @PathVariable Long id,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "goalAmount", required = false) Double goalAmount,
+            @RequestParam(value = "category", required = false) Campaign.CampaignCategory category,
+            @RequestParam(value = "coverImage", required = false) MultipartFile coverImage,
+            @RequestParam(value = "galleryImages", required = false) MultipartFile[] galleryImages,
+            @RequestParam(value = "document", required = false) MultipartFile document,
+            @RequestParam(value = "removeDocument", required = false) Boolean removeDocument,
+            Authentication authentication) {
+
+        String userEmail = authentication.getName();
+
+        CampaignUpdateRequest request = new CampaignUpdateRequest();
+        request.setTitle(title);
+        request.setDescription(description);
+        request.setGoalAmount(goalAmount);
+        request.setCategory(category);
+
+        return ResponseEntity.ok(
+                campaignService.updateCampaign(id, request, coverImage, galleryImages, document, removeDocument, userEmail)
+        );
     }
 
     @GetMapping
@@ -57,13 +84,13 @@ public class CampaignController {
             @PathVariable Campaign.CampaignStatus status) {
         return ResponseEntity.ok(campaignService.getCampaignsByStatus(status));
     }
-    
+
     @GetMapping("/category/{category}")
     public ResponseEntity<List<CampaignDto>> getCampaignsByCategory(
             @PathVariable Campaign.CampaignCategory category) {
         return ResponseEntity.ok(campaignService.getCampaignsByCategory(category));
     }
-    
+
     @GetMapping("/my")
     public ResponseEntity<List<CampaignDto>> getUserCampaigns(Authentication authentication) {
         String userEmail = authentication.getName();

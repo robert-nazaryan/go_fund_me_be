@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,10 +27,10 @@ public class CampaignService {
     public CampaignDto createCampaign(CampaignCreateRequest request,
                                       MultipartFile coverImage,
                                       MultipartFile[] galleryImages,
+                                      MultipartFile document,
                                       String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
-
 
         Campaign campaign = new Campaign();
         campaign.setTitle(request.getTitle());
@@ -57,6 +56,83 @@ public class CampaignService {
                 }
             }
             campaign.setGalleryImages(galleryPaths.toArray(new String[0]));
+        }
+
+        // Save document
+        if (document != null && !document.isEmpty()) {
+            String documentPath = fileStorageService.storeFile(document, "documents");
+            campaign.setDocumentUrl(documentPath);
+        }
+
+        campaign = campaignRepository.save(campaign);
+        return mapToDto(campaign);
+    }
+
+    @Transactional
+    public CampaignDto updateCampaign(Long id,
+                                      CampaignUpdateRequest request,
+                                      MultipartFile coverImage,
+                                      MultipartFile[] galleryImages,
+                                      MultipartFile document,
+                                      Boolean removeDocument,
+                                      String userEmail) {
+        Campaign campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Кампания не найдена"));
+
+        if (!campaign.getUser().getEmail().equals(userEmail)) {
+            throw new IllegalArgumentException("Вы не можете редактировать эту кампанию");
+        }
+
+        // Update basic fields
+        if (request.getTitle() != null) {
+            campaign.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            campaign.setDescription(request.getDescription());
+        }
+        if (request.getGoalAmount() != null) {
+            campaign.setGoalAmount(request.getGoalAmount());
+        }
+        if (request.getCategory() != null) {
+            campaign.setCategory(request.getCategory());
+        }
+
+        // Update cover image if provided
+        if (coverImage != null && !coverImage.isEmpty()) {
+            fileStorageService.deleteFile(campaign.getCoverImage());
+            String coverImagePath = fileStorageService.storeFile(coverImage, "covers");
+            campaign.setCoverImage(coverImagePath);
+        }
+
+        // Update gallery images if provided
+        if (galleryImages != null && galleryImages.length > 0) {
+            if (campaign.getGalleryImages() != null) {
+                for (String path : campaign.getGalleryImages()) {
+                    fileStorageService.deleteFile(path);
+                }
+            }
+            List<String> galleryPaths = new ArrayList<>();
+            for (MultipartFile file : galleryImages) {
+                if (!file.isEmpty()) {
+                    String path = fileStorageService.storeFile(file, "gallery");
+                    galleryPaths.add(path);
+                }
+            }
+            campaign.setGalleryImages(galleryPaths.toArray(new String[0]));
+        }
+
+        // Update or remove document
+        if (removeDocument != null && removeDocument) {
+            if (campaign.getDocumentUrl() != null) {
+                fileStorageService.deleteFile(campaign.getDocumentUrl());
+                campaign.setDocumentUrl(null);
+            }
+        } else if (document != null && !document.isEmpty()) {
+            if (campaign.getDocumentUrl() != null) {
+                fileStorageService.deleteFile(campaign.getDocumentUrl());
+            }
+            String documentPath = fileStorageService.storeFile(document, "documents");
+            campaign.setDocumentUrl(documentPath);
         }
 
         campaign = campaignRepository.save(campaign);
@@ -112,6 +188,9 @@ public class CampaignService {
                 fileStorageService.deleteFile(path);
             }
         }
+        if (campaign.getDocumentUrl() != null) {
+            fileStorageService.deleteFile(campaign.getDocumentUrl());
+        }
 
         campaignRepository.delete(campaign);
     }
@@ -125,6 +204,7 @@ public class CampaignService {
         dto.setCurrentAmount(campaign.getCurrentAmount());
         dto.setCoverImage(campaign.getCoverImage());
         dto.setGalleryImages(campaign.getGalleryImages());
+        dto.setDocumentUrl(campaign.getDocumentUrl());
         dto.setCategory(campaign.getCategory());
         dto.setStatus(campaign.getStatus());
         dto.setDeadline(campaign.getDeadline());
